@@ -19,7 +19,8 @@ async function getRecipes(req, res, next) {
 
 async function discoverRecipes(req, res, next) {
   try {
-    const recipes = await recipeService.discoverRecipes(req.body);
+    const language = req.get('Accept-Language')?.split(',')[0]?.split('-')[0]?.trim() || 'en';
+    const recipes = await recipeService.discoverRecipes({ ...req.body, language });
     return res.json({ data: { recipes } });
   } catch (err) {
     return next(err);

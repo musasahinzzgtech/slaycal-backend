@@ -43,8 +43,8 @@ async function getRecipes({ page = 1, perPage = 20, title, description, isTrendi
   return { recipes: raw.map(mapRecipe), pagination: buildPagination(page, perPage, total) };
 }
 
-async function discoverRecipes({ ingredients, maxPrepTime, dietaryPreferences }) {
-  const aiRecipes = await openaiService.generateRecipes(ingredients, maxPrepTime, dietaryPreferences);
+async function discoverRecipes({ ingredients, maxPrepTime, dietaryPreferences, language = 'en' }) {
+  const aiRecipes = await openaiService.generateRecipes(ingredients, maxPrepTime, dietaryPreferences, language);
 
   const saved = await Recipe.insertMany(
     aiRecipes.map((r) => ({ ...r, source: 'ai_generated', isPublished: true }))

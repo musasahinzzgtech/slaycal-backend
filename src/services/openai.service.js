@@ -12,13 +12,19 @@ function getClient() {
 /**
  * Generate recipes based on ingredients using GPT.
  */
-async function generateRecipes(ingredients, maxPrepTime, dietaryPreferences) {
+async function generateRecipes(ingredients, maxPrepTime, dietaryPreferences, language = 'en') {
   const constraints = [];
   if (maxPrepTime) constraints.push(`max prep time ${maxPrepTime} minutes`);
   if (dietaryPreferences?.length) constraints.push(`dietary: ${dietaryPreferences.join(', ')}`);
 
   const prompt = `You are a professional chef. Generate 3 creative recipes using these ingredients: ${ingredients.join(', ')}.
 ${constraints.length ? `Constraints: ${constraints.join('; ')}.` : ''}
+
+IMPORTANT LANGUAGE RULES:
+- Return all text fields (title, description, ingredients, instructions, dietaryTags) in the "${language}" language.
+- Use proper display format (capitalize each word, e.g. "Zeytinyağlı Tavuk" or "Olive Oil Chicken").
+- dietaryTags must be human-readable display labels in "${language}" (e.g. in Turkish: "Gluten Yok", "Vegan", "Vejeteryan", "Süt Ürünü Yok", "Düşük Karbonhidrat"; in English: "Gluten Free", "Vegan", "Vegetarian", "Dairy Free", "Low Carb").
+- difficulty must always be one of these exact English enum values: "easy", "medium", or "hard" (never translated).
 
 Return a JSON array of recipes. Each recipe must have:
 - title (string)
@@ -29,7 +35,7 @@ Return a JSON array of recipes. Each recipe must have:
 - cookTimeMinutes (number)
 - servings (number)
 - nutrition: { calories, protein, carbs, fat, fiber } (numbers, per serving)
-- dietaryTags (string array, e.g. ["vegetarian", "gluten-free"])
+- dietaryTags (string array, human-readable labels in "${language}")
 - difficulty ("easy"|"medium"|"hard")
 
 Return ONLY the JSON array, no extra text.`;
