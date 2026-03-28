@@ -1,4 +1,6 @@
 const cmsService = require('../services/cms.service');
+const Recipe = require('../models/Recipe');
+const { uploadBuffer } = require('../services/storage.service');
 
 async function listSurveyQuestions(req, res, next) {
   try {
@@ -73,6 +75,65 @@ async function deleteUser(req, res, next) {
   }
 }
 
+async function listRecipes(req, res, next) {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+    const skip = (page - 1) * limit;
+    const [recipes, total] = await Promise.all([
+      Recipe.find().sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Recipe.countDocuments(),
+    ]);
+    res.json({ data: recipes, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function _uploadRecipeImage(file) {
+  const ext = file.originalname.split('.').pop() || 'jpg';
+  const destination = `recipes/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+  return uploadBuffer(file.buffer, destination, file.mimetype);
+}
+
+async function createRecipe(req, res, next) {
+  try {
+    // Fields come as a JSON string in `data` when multipart, or plain JSON body
+    const body = req.body.data ? JSON.parse(req.body.data) : req.body;
+    if (req.file) {
+      body.imageUrl = await _uploadRecipeImage(req.file);
+    }
+    const recipe = await Recipe.create(body);
+    res.status(201).json({ data: recipe });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateRecipe(req, res, next) {
+  try {
+    const body = req.body.data ? JSON.parse(req.body.data) : req.body;
+    if (req.file) {
+      body.imageUrl = await _uploadRecipeImage(req.file);
+    }
+    const recipe = await Recipe.findByIdAndUpdate(req.params.id, body, { new: true, runValidators: true }).lean();
+    if (!recipe) return res.status(404).json({ error: 'Recipe not found' });
+    res.json({ data: recipe });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function deleteRecipe(req, res, next) {
+  try {
+    const recipe = await Recipe.findByIdAndDelete(req.params.id);
+    if (!recipe) return res.status(404).json({ error: 'Recipe not found' });
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listSurveyQuestions,
   createSurveyQuestion,
@@ -82,4 +143,8 @@ module.exports = {
   createUser,
   updateUser,
   deleteUser,
+  listRecipes,
+  createRecipe,
+  updateRecipe,
+  deleteRecipe,
 };

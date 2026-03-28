@@ -48,4 +48,10 @@ router.post('/users', validate(createUserSchema), cmsController.createUser);
 router.patch('/users/:id', validate(updateUserSchema), cmsController.updateUser);
 router.delete('/users/:id', cmsController.deleteUser);
 
+// ── Recipes CRUD ───────────────────────────────────────────────────────────────
+router.get('/recipes', cmsController.listRecipes);
+router.post('/recipes', cmsController.createRecipe);
+router.patch('/recipes/:id', cmsController.updateRecipe);
+router.delete('/recipes/:id', cmsController.deleteRecipe);
+
 module.exports = router;

@@ -29,6 +29,7 @@ const recipeSchema = new mongoose.Schema(
     source: { type: String, enum: ['manual', 'ai_generated'], default: 'manual' },
     isPublished: { type: Boolean, default: true },
     isTrending: { type: Boolean, default: false },
+    category: { type: String },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }
