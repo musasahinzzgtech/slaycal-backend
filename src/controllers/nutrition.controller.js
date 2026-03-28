@@ -52,7 +52,8 @@ async function getWaterIntake(req, res, next) {
   try {
     const result = await nutritionService.getWaterIntake({
       userId: req.user.id,
-      date: req.query.date,
+      startDate: req.query.startDate,
+      endDate: req.query.endDate,
     });
     return res.json({ data: result });
   } catch (err) {

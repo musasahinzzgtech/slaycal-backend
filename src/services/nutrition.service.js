@@ -8,36 +8,88 @@ const ApiError = require('../utils/ApiError');
 // ─── Food Log ─────────────────────────────────────────────────────────────────
 
 async function getFoodLog({ userId, startDate, endDate }) {
-  const start = startDate
-    ? new Date(`${startDate}T00:00:00.000Z`)
-    : new Date(new Date().setHours(0, 0, 0, 0));
-  const end = endDate
-    ? new Date(`${endDate}T23:59:59.999Z`)
-    : new Date(new Date().setHours(23, 59, 59, 999));
+  const today = new Date().toISOString().slice(0, 10);
+  const start = new Date(`${startDate || today}T00:00:00.000Z`);
+  const end = new Date(`${endDate || today}T23:59:59.999Z`);
 
-  const entries = await FoodLogEntry.find({
-    user: userId,
-    loggedAt: { $gte: start, $lte: end },
-  })
-    .sort({ loggedAt: 1 })
-    .lean();
+  const [rawEntries, activePlan, prefs] = await Promise.all([
+    FoodLogEntry.find({ user: userId, loggedAt: { $gte: start, $lte: end } })
+      .sort({ loggedAt: 1 })
+      .lean(),
+    GoalPlan.findOne({ user: userId, isActive: true }).lean(),
+    UserPreference.findOne({ user: userId }).lean(),
+  ]);
 
+  const targets = {
+    calories: activePlan?.targetCalories || prefs?.dailyCalorieTarget || 0,
+    proteinGrams: activePlan?.targetProteinG || prefs?.dailyProteinTarget || 0,
+    carbsGrams: activePlan?.targetCarbsG || prefs?.dailyCarbsTarget || 0,
+    fatGrams: activePlan?.targetFatG || prefs?.dailyFatTarget || 0,
+  };
+
+  // Group entries by date
   const byDate = {};
-  for (const entry of entries) {
+  for (const entry of rawEntries) {
     const date = entry.loggedAt.toISOString().slice(0, 10);
     if (!byDate[date]) byDate[date] = [];
-    byDate[date].push(entry);
+    byDate[date].push({
+      id: entry._id.toString(),
+      mealName: entry.mealName,
+      calories: entry.calories || 0,
+      proteinGrams: entry.proteinGrams || 0,
+      carbsGrams: entry.carbsGrams || 0,
+      fatGrams: entry.fatGrams || 0,
+      quantity: entry.quantity || 1,
+      mealType: entry.mealType,
+      loggedAt: entry.loggedAt.toISOString(),
+      createdAt: entry.createdAt?.toISOString(),
+      updatedAt: entry.updatedAt?.toISOString(),
+    });
   }
 
-  const dailySummaries = Object.entries(byDate).map(([date, dayEntries]) => ({
-    date,
-    totalCalories: dayEntries.reduce((s, e) => s + (e.calories || 0), 0),
-    totalProtein: dayEntries.reduce((s, e) => s + (e.proteinGrams || 0), 0),
-    totalCarbs: dayEntries.reduce((s, e) => s + (e.carbsGrams || 0), 0),
-    totalFat: dayEntries.reduce((s, e) => s + (e.fatGrams || 0), 0),
-  }));
+  // Build days array with per-day summaries
+  const days = Object.entries(byDate).map(([date, dayEntries]) => {
+    const totalCalories = dayEntries.reduce((s, e) => s + e.calories, 0);
+    const totalProteinGrams = dayEntries.reduce((s, e) => s + e.proteinGrams, 0);
+    const totalCarbsGrams = dayEntries.reduce((s, e) => s + e.carbsGrams, 0);
+    const totalFatGrams = dayEntries.reduce((s, e) => s + e.fatGrams, 0);
+    return {
+      date,
+      summary: {
+        totalCalories,
+        totalProteinGrams,
+        totalCarbsGrams,
+        totalFatGrams,
+        targetCalories: targets.calories,
+        targetProteinGrams: targets.proteinGrams,
+        targetCarbsGrams: targets.carbsGrams,
+        targetFatGrams: targets.fatGrams,
+      },
+      entries: dayEntries,
+    };
+  });
 
-  return { entries, dailySummaries };
+  // Overall summary across all days
+  const overallCalories = days.reduce((s, d) => s + d.summary.totalCalories, 0);
+  const overallProtein = days.reduce((s, d) => s + d.summary.totalProteinGrams, 0);
+  const overallCarbs = days.reduce((s, d) => s + d.summary.totalCarbsGrams, 0);
+  const overallFat = days.reduce((s, d) => s + d.summary.totalFatGrams, 0);
+
+  return {
+    startDate: start.toISOString().slice(0, 10),
+    endDate: end.toISOString().slice(0, 10),
+    summary: {
+      totalCalories: overallCalories,
+      totalProteinGrams: overallProtein,
+      totalCarbsGrams: overallCarbs,
+      totalFatGrams: overallFat,
+      targetCalories: targets.calories,
+      targetProteinGrams: targets.proteinGrams,
+      targetCarbsGrams: targets.carbsGrams,
+      targetFatGrams: targets.fatGrams,
+    },
+    days,
+  };
 }
 
 async function createFoodLog({ userId, data }) {
@@ -63,27 +115,37 @@ async function deleteFoodLog({ userId, id }) {
 
 // ─── Water Intake ─────────────────────────────────────────────────────────────
 
-async function getWaterIntake({ userId, date }) {
-  const dateStr = date || new Date().toISOString().slice(0, 10);
-  const start = new Date(`${dateStr}T00:00:00.000Z`);
-  const end = new Date(`${dateStr}T23:59:59.999Z`);
+async function getWaterIntake({ userId, startDate, endDate }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const start = new Date(`${startDate || today}T00:00:00.000Z`);
+  const end = new Date(`${endDate || today}T23:59:59.999Z`);
 
-  const entries = await WaterIntake.find({
-    user: userId,
-    loggedAt: { $gte: start, $lte: end },
-  })
-    .sort({ loggedAt: 1 })
-    .lean();
-
-  const totalMl = entries.reduce((s, e) => s + e.amountMl, 0);
-
-  const [prefs, activePlan] = await Promise.all([
+  const [rawEntries, prefs, activePlan] = await Promise.all([
+    WaterIntake.find({ user: userId, loggedAt: { $gte: start, $lte: end } })
+      .sort({ loggedAt: 1 })
+      .lean(),
     UserPreference.findOne({ user: userId }).lean(),
     GoalPlan.findOne({ user: userId, isActive: true }).lean(),
   ]);
-  const goalMl = activePlan?.targetWaterMl || prefs?.dailyWaterGoalMl || 2000;
 
-  return { entries, totalMl, goalMl };
+  const dailyGoalMl = activePlan?.targetWaterMl || prefs?.dailyWaterGoalMl || 2000;
+  const totalIntakeMl = rawEntries.reduce((s, e) => s + e.amountMl, 0);
+  const progressPercentage = dailyGoalMl > 0 ? Math.round((totalIntakeMl / dailyGoalMl) * 100) : 0;
+
+  const entries = rawEntries.map((e) => ({
+    id: e._id.toString(),
+    amountMl: e.amountMl,
+    loggedAt: e.loggedAt.toISOString(),
+  }));
+
+  return {
+    startDate: start.toISOString().slice(0, 10),
+    endDate: end.toISOString().slice(0, 10),
+    totalIntakeMl,
+    dailyGoalMl,
+    progressPercentage,
+    entries,
+  };
 }
 
 async function createWaterIntake({ userId, data }) {
@@ -116,6 +178,7 @@ async function getProgress({ userId, startDate, endDate }) {
     UserPreference.findOne({ user: userId }).lean(),
   ]);
 
+  // Build per-day aggregation map
   const dayMap = {};
   const addDay = (d) => {
     if (!dayMap[d]) dayMap[d] = { date: d, calories: 0, protein: 0, carbs: 0, fat: 0, waterMl: 0, weightKg: null };
@@ -140,26 +203,62 @@ async function getProgress({ userId, startDate, endDate }) {
     dayMap[d].weightKg = w.weightKg;
   }
 
-  const dailyBreakdown = Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date));
-  const count = dailyBreakdown.length || 1;
+  const days = Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date));
+  const count = days.length || 1;
 
   const targets = {
-    calories: activePlan?.targetCalories || prefs?.dailyCalorieTarget || null,
-    protein: activePlan?.targetProteinG || prefs?.dailyProteinTarget || null,
-    carbs: activePlan?.targetCarbsG || prefs?.dailyCarbsTarget || null,
-    fat: activePlan?.targetFatG || prefs?.dailyFatTarget || null,
-    waterMl: activePlan?.targetWaterMl || prefs?.dailyWaterGoalMl || null,
+    calories: activePlan?.targetCalories || prefs?.dailyCalorieTarget || 0,
+    waterMl: activePlan?.targetWaterMl || prefs?.dailyWaterGoalMl || 0,
   };
 
-  const averages = {
-    calories: Math.round(dailyBreakdown.reduce((s, d) => s + d.calories, 0) / count),
-    protein: Math.round(dailyBreakdown.reduce((s, d) => s + d.protein, 0) / count),
-    carbs: Math.round(dailyBreakdown.reduce((s, d) => s + d.carbs, 0) / count),
-    fat: Math.round(dailyBreakdown.reduce((s, d) => s + d.fat, 0) / count),
-    waterMl: Math.round(dailyBreakdown.reduce((s, d) => s + d.waterMl, 0) / count),
-  };
+  const avgCalories = Math.round(days.reduce((s, d) => s + d.calories, 0) / count);
+  const avgWaterMl = Math.round(days.reduce((s, d) => s + d.waterMl, 0) / count);
 
-  return { dailyBreakdown, targets, averages, weightLogs };
+  // Weight trend
+  const weightDays = days.filter((d) => d.weightKg !== null);
+  const currentKg = prefs?.weightKg || (weightDays.length ? weightDays[weightDays.length - 1].weightKg : 0);
+  const firstKg = weightDays.length ? weightDays[0].weightKg : currentKg;
+  const heightCm = prefs?.heightCm || 0;
+  const bmi = heightCm > 0 ? Math.round((currentKg / Math.pow(heightCm / 100, 2)) * 10) / 10 : 0;
+
+  return {
+    startDate: start.toISOString().slice(0, 10),
+    endDate: end.toISOString().slice(0, 10),
+    calorieIntake: {
+      avgPerDay: avgCalories,
+      targetPerDay: targets.calories,
+      changePercentage: targets.calories > 0 ? Math.round(((avgCalories - targets.calories) / targets.calories) * 100) : 0,
+      dailyBreakdown: days.map((d) => ({
+        date: d.date,
+        totalCalories: d.calories,
+        totalProteinGrams: d.protein,
+        totalCarbsGrams: d.carbs,
+        totalFatGrams: d.fat,
+      })),
+    },
+    waterIntake: {
+      avgPerDayMl: avgWaterMl,
+      dailyGoalMl: targets.waterMl,
+      goalAchievementPercentage: targets.waterMl > 0 ? Math.round((avgWaterMl / targets.waterMl) * 100) : 0,
+      dailyBreakdown: days.map((d) => ({
+        date: d.date,
+        totalMl: d.waterMl,
+        targetWaterMl: targets.waterMl,
+      })),
+    },
+    weightTrend: {
+      currentKg,
+      targetKg: prefs?.goalWeightKg || 0,
+      changeKg: Math.round((currentKg - firstKg) * 10) / 10,
+      bmi,
+      heightCm,
+      dailyBreakdown: weightDays.map((d) => ({
+        date: d.date,
+        weightKg: d.weightKg,
+        targetWeightKg: prefs?.goalWeightKg || 0,
+      })),
+    },
+  };
 }
 
 // ─── Weight Log ───────────────────────────────────────────────────────────────

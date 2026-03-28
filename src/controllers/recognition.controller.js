@@ -4,7 +4,8 @@ const ApiError = require('../utils/ApiError');
 async function uploadImage(req, res, next) {
   try {
     if (!req.file) throw new ApiError(400, 'Image file required', 'NO_FILE');
-    const result = await recognitionService.uploadImage({ userId: req.user.id, file: req.file });
+    const language = req.get('Accept-Language')?.split(',')[0]?.split('-')[0]?.trim() || 'en';
+    const result = await recognitionService.uploadImage({ userId: req.user.id, file: req.file, language });
     return res.status(201).json({ data: result });
   } catch (err) {
     return next(err);

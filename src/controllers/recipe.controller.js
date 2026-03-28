@@ -10,8 +10,8 @@ function parsePagination(query) {
 async function getRecipes(req, res, next) {
   try {
     const { page, perPage } = parsePagination(req.query);
-    const result = await recipeService.getRecipes({ page, perPage, ...req.query });
-    return res.json({ data: result });
+    const { recipes, pagination } = await recipeService.getRecipes({ page, perPage, ...req.query });
+    return res.json({ data: recipes, meta: pagination });
   } catch (err) {
     return next(err);
   }
@@ -29,13 +29,13 @@ async function discoverRecipes(req, res, next) {
 async function getPersonalizedRecipes(req, res, next) {
   try {
     const { page, perPage } = parsePagination(req.query);
-    const result = await recipeService.getPersonalizedRecipes({
+    const { recipes, pagination } = await recipeService.getPersonalizedRecipes({
       userId: req.user.id,
       page,
       perPage,
       isTrending: req.query.isTrending,
     });
-    return res.json({ data: result });
+    return res.json({ data: recipes, meta: pagination });
   } catch (err) {
     return next(err);
   }

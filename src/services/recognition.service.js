@@ -4,7 +4,7 @@ const quotaService = require('./quota.service');
 const openaiService = require('./openai.service');
 const ApiError = require('../utils/ApiError');
 
-async function uploadImage({ userId, file }) {
+async function uploadImage({ userId, file, language = 'en' }) {
   await quotaService.check(userId, 'ai_scan');
 
   const timestamp = Date.now();
@@ -18,6 +18,7 @@ async function uploadImage({ userId, file }) {
     status: 'pending',
     imageUrl,
     firebasePath: destination,
+    language,
   });
 
   // Fire-and-forget
@@ -49,7 +50,7 @@ async function processImage(jobId) {
     job.status = 'processing';
     await job.save();
 
-    const ingredients = await openaiService.recognizeIngredients(job.imageUrl);
+    const ingredients = await openaiService.recognizeIngredients(job.imageUrl, job.language || 'en');
     job.detectionResults = ingredients;
     job.status = 'completed';
     job.completedAt = new Date();

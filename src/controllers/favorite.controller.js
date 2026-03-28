@@ -4,8 +4,8 @@ async function getFavorites(req, res, next) {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const perPage = Math.min(100, parseInt(req.query.perPage, 10) || 20);
-    const result = await favoriteService.getFavorites({ userId: req.user.id, page, perPage });
-    return res.json({ data: result });
+    const { recipes, pagination } = await favoriteService.getFavorites({ userId: req.user.id, page, perPage });
+    return res.json({ data: recipes, meta: pagination });
   } catch (err) {
     return next(err);
   }

@@ -17,6 +17,7 @@ const imageJobSchema = new mongoose.Schema(
         _id: false,
       },
     ],
+    language: { type: String, default: 'en' },
     errorMessage: { type: String },
     completedAt: { type: Date },
   },

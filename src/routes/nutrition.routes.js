@@ -7,23 +7,23 @@ const validate = require('../middleware/validate');
 const router = express.Router();
 
 const foodLogSchema = z.object({
-  mealName: z.string().min(1),
-  calories: z.number(),
-  proteinGrams: z.number().default(0),
-  carbsGrams: z.number().default(0),
-  fatGrams: z.number().default(0),
-  quantity: z.number().default(1),
+  mealName: z.string().min(1).max(200),
+  calories: z.number().min(0).max(10000),
+  proteinGrams: z.number().min(0).max(1000).default(0),
+  carbsGrams: z.number().min(0).max(1000).default(0),
+  fatGrams: z.number().min(0).max(1000).default(0),
+  quantity: z.number().min(0.1).max(100).default(1),
   mealType: z.enum(['breakfast', 'lunch', 'dinner', 'snack']).default('snack'),
   loggedAt: z.string().optional(),
 });
 
 const foodLogUpdateSchema = z.object({
-  mealName: z.string().optional(),
-  calories: z.number().optional(),
-  proteinGrams: z.number().optional(),
-  carbsGrams: z.number().optional(),
-  fatGrams: z.number().optional(),
-  quantity: z.number().optional(),
+  mealName: z.string().min(1).max(200).optional(),
+  calories: z.number().min(0).max(10000).optional(),
+  proteinGrams: z.number().min(0).max(1000).optional(),
+  carbsGrams: z.number().min(0).max(1000).optional(),
+  fatGrams: z.number().min(0).max(1000).optional(),
+  quantity: z.number().min(0.1).max(100).optional(),
   mealType: z.enum(['breakfast', 'lunch', 'dinner', 'snack']).optional(),
 });
 

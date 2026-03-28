@@ -5,6 +5,7 @@ const validate = require('../middleware/validate');
 const cmsController = require('../controllers/cms.controller');
 const translationController = require('../controllers/translation.controller');
 const { createSurveyQuestionSchema, updateSurveyQuestionSchema } = require('../schemas/cms.schemas');
+const upload = require('../middleware/upload');
 
 const translationSchema = z.object({
   en: z.string().optional(),
@@ -50,8 +51,8 @@ router.delete('/users/:id', cmsController.deleteUser);
 
 // ── Recipes CRUD ───────────────────────────────────────────────────────────────
 router.get('/recipes', cmsController.listRecipes);
-router.post('/recipes', cmsController.createRecipe);
-router.patch('/recipes/:id', cmsController.updateRecipe);
+router.post('/recipes', upload.single('image'), cmsController.createRecipe);
+router.patch('/recipes/:id', upload.single('image'), cmsController.updateRecipe);
 router.delete('/recipes/:id', cmsController.deleteRecipe);
 
 module.exports = router;

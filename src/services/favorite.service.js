@@ -3,7 +3,25 @@ const Recipe = require('../models/Recipe');
 const ApiError = require('../utils/ApiError');
 
 function buildPagination(page, perPage, total) {
-  return { page, perPage, total, totalPages: Math.ceil(total / perPage) };
+  const lastPage = Math.max(1, Math.ceil(total / perPage));
+  const from = (page - 1) * perPage;
+  const to = Math.min(from + perPage, total);
+  return { page, perPage, total, lastPage, from, to };
+}
+
+function mapRecipe(r) {
+  if (!r) return null;
+  return {
+    id: r._id.toString(),
+    title: r.title,
+    slug: r.slug,
+    description: r.description,
+    difficulty: r.difficulty,
+    totalTimeMinutes: r.totalTimeMinutes,
+    imageUrl: r.imageUrl || null,
+    isFavorite: true,
+    isTrending: r.isTrending,
+  };
 }
 
 async function getFavorites({ userId, page = 1, perPage = 20 }) {
@@ -19,7 +37,7 @@ async function getFavorites({ userId, page = 1, perPage = 20 }) {
     Favorite.countDocuments({ user: userId }),
   ]);
 
-  const recipes = favs.map((f) => f.recipe).filter(Boolean);
+  const recipes = favs.map((f) => mapRecipe(f.recipe)).filter(Boolean);
   return { recipes, pagination: buildPagination(page, perPage, total) };
 }
 

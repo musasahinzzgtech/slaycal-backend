@@ -16,6 +16,8 @@ const adminRoutes = require("./routes/admin.routes");
 const cmsRoutes = require("./routes/cms.routes");
 const translationsRoutes = require("./routes/translations.routes");
 
+const config = require("./config");
+
 const app = express();
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────

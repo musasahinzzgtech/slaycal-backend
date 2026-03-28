@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const controller = require('../controllers/auth.controller');
 const auth = require('../middleware/auth');
+const adminAuth = require('../middleware/adminAuth');
 const validate = require('../middleware/validate');
 
 const router = express.Router();
@@ -24,7 +25,7 @@ const loginSchema = z.object({
 
 router.post('/anonymous/init', controller.initAnonymous);
 router.post('/register', validate(registerSchema), controller.register);
-router.post('/admin/register', validate(registerSchema), controller.registerAdmin);
+router.post('/admin/register', auth, adminAuth, validate(registerSchema), controller.registerAdmin);
 router.post('/login', validate(loginSchema), controller.login);
 router.post('/logout', auth, controller.logout);
 

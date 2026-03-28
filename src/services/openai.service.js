@@ -83,7 +83,7 @@ Return ONLY the JSON object.`,
  * @param {string} imageUrl
  * @returns {Array<{ ingredientName: string, confidence: number }>}
  */
-async function recognizeIngredients(imageUrl) {
+async function recognizeIngredients(imageUrl, language = 'en') {
   const response = await getClient().chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [
@@ -93,6 +93,9 @@ async function recognizeIngredients(imageUrl) {
           {
             type: 'text',
             text: `Identify all food ingredients visible in this image.
+Return ingredient names in the "${language}" language.
+Use proper display text format for each name (e.g. "Green Apple", "Olive Oil", "Cherry Tomato" — capitalize each word, never all lowercase).
+
 Return a JSON object with:
 - ingredients: array of { ingredientName: string, confidence: number (0-1) }
 
