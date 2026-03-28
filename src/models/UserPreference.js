@@ -29,10 +29,25 @@ const userPreferenceSchema = new mongoose.Schema(
       default: null,
     },
 
+    // Goal & timeline
+    goalTimeline: { type: String, enum: ['relaxed', 'moderate', 'aggressive', null], default: null },
+
     // Dietary
     dietaryPreferences: { type: [String], default: [] },
     allergens: { type: [String], default: [] },
     cuisinePreferences: { type: [String], default: [] },
+
+    // Health
+    healthConditions: { type: [String], default: [] },
+
+    // Fitness
+    fitnessLevel: { type: String, enum: ['beginner', 'intermediate', 'advanced', 'athlete', null], default: null },
+    workoutPreferences: { type: [String], default: [] },
+    physicalLimitations: { type: [String], default: [] },
+
+    // Lifestyle
+    mealsPerDay: { type: Number },
+    cookTimePreference: { type: String },
 
     // Calculated targets
     dailyCalorieTarget: { type: Number },

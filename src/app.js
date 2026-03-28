@@ -14,6 +14,7 @@ const scanRoutes = require("./routes/scan.routes");
 const nutritionRoutes = require("./routes/nutrition.routes");
 const adminRoutes = require("./routes/admin.routes");
 const cmsRoutes = require("./routes/cms.routes");
+const translationsRoutes = require("./routes/translations.routes");
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use(`${API}/scan`, scanRoutes);
 app.use(`${API}/nutrition`, nutritionRoutes);
 app.use(`${API}/admin`, adminRoutes);
 app.use(`${API}/cms`, cmsRoutes);
+app.use(`${API}/translations`, translationsRoutes);
 
 // ─── 404 ──────────────────────────────────────────────────────────────────────
 app.use((req, res) => {

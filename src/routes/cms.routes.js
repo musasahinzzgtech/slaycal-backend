@@ -3,7 +3,13 @@ const { Router } = require('express');
 const { z } = require('zod');
 const validate = require('../middleware/validate');
 const cmsController = require('../controllers/cms.controller');
+const translationController = require('../controllers/translation.controller');
 const { createSurveyQuestionSchema, updateSurveyQuestionSchema } = require('../schemas/cms.schemas');
+
+const translationSchema = z.object({
+  en: z.string().optional(),
+  tr: z.string().optional(),
+});
 
 const router = Router();
 
@@ -29,6 +35,12 @@ router.get('/survey-questions', cmsController.listSurveyQuestions);
 router.post('/survey-questions', validate(createSurveyQuestionSchema), cmsController.createSurveyQuestion);
 router.patch('/survey-questions/:id', validate(updateSurveyQuestionSchema), cmsController.updateSurveyQuestion);
 router.delete('/survey-questions/:id', cmsController.deleteSurveyQuestion);
+
+// ── Translations CRUD ──────────────────────────────────────────────────────────
+router.get('/translations', translationController.listTranslations);
+router.get('/translations/:key', translationController.getTranslation);
+router.put('/translations/:key', validate(translationSchema), translationController.upsertTranslation);
+router.delete('/translations/:key', translationController.deleteTranslation);
 
 // ── Users CRUD ─────────────────────────────────────────────────────────────────
 router.get('/users', cmsController.listUsers);

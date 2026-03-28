@@ -7,9 +7,10 @@
  * @param {number} params.weightKg
  * @param {'sedentary'|'light'|'moderate'|'active'|'very_active'} params.activityLevel
  * @param {'lose_weight'|'maintain'|'gain_muscle'} params.goalType
+ * @param {'relaxed'|'moderate'|'aggressive'} [params.goalTimeline]
  * @returns {{ calories, proteinG, carbsG, fatG, waterMl }}
  */
-function calculateTargets({ gender, age, heightCm, weightKg, activityLevel, goalType }) {
+function calculateTargets({ gender, age, heightCm, weightKg, activityLevel, goalType, goalTimeline }) {
   if (!age || !heightCm || !weightKg) return null;
 
   // BMR — Harris-Benedict revised (Mifflin-St Jeor is more accurate but plan says Harris-Benedict)
@@ -32,9 +33,13 @@ function calculateTargets({ gender, age, heightCm, weightKg, activityLevel, goal
   const multiplier = activityMultipliers[activityLevel] || 1.2;
   let tdee = bmr * multiplier;
 
-  // Adjust for goal
-  if (goalType === 'lose_weight') tdee -= 500;
-  else if (goalType === 'gain_muscle') tdee += 250;
+  // Goal adjustments scaled by timeline (default: moderate)
+  const timeline = goalTimeline || 'moderate';
+  const loseAdjustment = { relaxed: -250, moderate: -500, aggressive: -750 };
+  const gainAdjustment = { relaxed: 150, moderate: 250, aggressive: 400 };
+
+  if (goalType === 'lose_weight') tdee += loseAdjustment[timeline] ?? -500;
+  else if (goalType === 'gain_muscle') tdee += gainAdjustment[timeline] ?? 250;
 
   const calories = Math.round(tdee);
 
