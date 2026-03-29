@@ -13,6 +13,8 @@ const userSchema = new mongoose.Schema(
     locale: { type: String, default: 'en' },
     refreshToken: { type: String },
     roles: { type: [String], default: ['user'] },
+    fcmToken: { type: String },
+    fcmTokenPlatform: { type: String },
   },
   { timestamps: true }
 );

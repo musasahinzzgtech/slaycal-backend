@@ -129,6 +129,41 @@ module.exports = {
     },
   },
 
+  '/api/v1/auth/admin/register': {
+    post: {
+      tags: ['Auth'],
+      summary: 'Register an admin user',
+      description: 'Requires a valid JWT with **admin** role.',
+      security: bearer,
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/AdminRegisterBody' },
+          },
+        },
+      },
+      responses: {
+        201: {
+          description: 'Admin user created; tokens issued',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { data: { $ref: '#/components/schemas/TokenPair' } },
+              },
+            },
+          },
+        },
+        401: errRef('Unauthorized'),
+        403: errRef('Forbidden (not admin)'),
+        409: errRef('Email already registered'),
+        422: errRef('Validation error'),
+        500: errRef('Server error'),
+      },
+    },
+  },
+
   '/api/v1/auth/logout': {
     post: {
       tags: ['Auth'],
@@ -317,6 +352,77 @@ module.exports = {
         },
         401: errRef('Unauthorized'),
         422: errRef('Validation error'),
+        500: errRef('Server error'),
+      },
+    },
+  },
+
+  '/api/v1/user/fcm-token': {
+    post: {
+      tags: ['User'],
+      summary: 'Register FCM push token',
+      description: 'Stores the Firebase Cloud Messaging device token for the authenticated user so push notifications can be sent to this device.',
+      security: bearer,
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/FcmTokenBody' },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Token registered',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { message: { type: 'string', example: 'FCM token registered' } },
+              },
+            },
+          },
+        },
+        401: errRef('Unauthorized'),
+        422: errRef('Validation error'),
+        500: errRef('Server error'),
+      },
+    },
+  },
+
+  '/api/v1/translations': {
+    get: {
+      tags: ['Translations'],
+      summary: 'Get locale translations (mobile)',
+      description:
+        'Public endpoint consumed by the mobile app on startup. Returns a **nested** object for the resolved locale so i18next `addResourceBundle` deep-merge works correctly. Locale is resolved from the `Accept-Language` request header (first tag, e.g. `tr` from `tr-TR`); falls back to `en`.',
+      parameters: [
+        {
+          name: 'Accept-Language',
+          in: 'header',
+          required: false,
+          schema: { type: 'string', example: 'tr-TR' },
+          description: 'BCP-47 language tag. First tag is used (e.g. `tr`).',
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Nested translation object for the requested locale',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  data: {
+                    type: 'object',
+                    additionalProperties: true,
+                    example: { home: { title: 'Ana Sayfa' }, welcome: 'Hoşgeldiniz' },
+                  },
+                },
+              },
+            },
+          },
+        },
         500: errRef('Server error'),
       },
     },
@@ -1270,16 +1376,151 @@ module.exports = {
     },
   },
 
-  '/api/v1/cms/users': {
+  '/api/v1/cms/translations': {
     get: {
-      tags: ['CMS'],
-      summary: 'List users (safe fields)',
+      tags: ['CMS — Translations'],
+      summary: 'List all translation keys',
+      description: 'Returns every key with both `en` and `tr` values, sorted by key. Used by the admin panel.',
+      security: [],
+      responses: {
+        200: {
+          description: 'Array of translation documents',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  data: { type: 'array', items: { $ref: '#/components/schemas/TranslationDoc' } },
+                },
+              },
+            },
+          },
+        },
+        500: errRef('Server error'),
+      },
+    },
+  },
+
+  '/api/v1/cms/translations/bulk': {
+    post: {
+      tags: ['CMS — Translations'],
+      summary: 'Bulk upsert translations',
       description:
-        'Response shape: `{ data: User[], pagination }` (pagination at top level). Unauthenticated in current code.',
+        'Accepts one or two nested locale JSON objects (`en`, `tr`). Nested keys are flattened to dot-notation (e.g. `{ "home": { "title": "Home" } }` → key `home.title`). Arrays are indexed: `loader.messages.0`, `loader.messages.1`, etc. All matched keys are upserted atomically via MongoDB `bulkWrite`.',
+      security: [],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/TranslationBulkBody' },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Number of keys inserted or modified',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  data: {
+                    type: 'object',
+                    properties: {
+                      upserted: { type: 'integer', example: 142, description: 'Total keys inserted + modified' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        422: errRef('No JSON provided or invalid body'),
+        500: errRef('Server error'),
+      },
+    },
+  },
+
+  '/api/v1/cms/translations/{key}': {
+    get: {
+      tags: ['CMS — Translations'],
+      summary: 'Get a single translation by key',
       security: [],
       parameters: [
-        { name: 'page', in: 'query', schema: { type: 'integer' } },
-        { name: 'limit', in: 'query', schema: { type: 'integer' } },
+        { name: 'key', in: 'path', required: true, schema: { type: 'string' }, example: 'home.title' },
+      ],
+      responses: {
+        200: {
+          description: 'Translation document',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { data: { $ref: '#/components/schemas/TranslationDoc' } },
+              },
+            },
+          },
+        },
+        404: errRef('Key not found'),
+        500: errRef('Server error'),
+      },
+    },
+    put: {
+      tags: ['CMS — Translations'],
+      summary: 'Create or update a translation key',
+      description: 'Upserts the document for the given key. Both `en` and `tr` are optional; omitted fields default to empty string.',
+      security: [],
+      parameters: [
+        { name: 'key', in: 'path', required: true, schema: { type: 'string' }, example: 'home.title' },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/TranslationUpsertBody' },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Upserted translation document',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { data: { $ref: '#/components/schemas/TranslationDoc' } },
+              },
+            },
+          },
+        },
+        422: errRef('Validation error'),
+        500: errRef('Server error'),
+      },
+    },
+    delete: {
+      tags: ['CMS — Translations'],
+      summary: 'Delete a translation key',
+      security: [],
+      parameters: [
+        { name: 'key', in: 'path', required: true, schema: { type: 'string' }, example: 'home.title' },
+      ],
+      responses: {
+        204: { description: 'Deleted' },
+        404: errRef('Key not found'),
+        500: errRef('Server error'),
+      },
+    },
+  },
+
+  '/api/v1/cms/users': {
+    get: {
+      tags: ['CMS — Users'],
+      summary: 'List users (safe fields)',
+      description: 'Paginated list of users with safe fields only (no password hash). Unauthenticated in current implementation.',
+      security: [],
+      parameters: [
+        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
       ],
       responses: {
         200: {
@@ -1296,6 +1537,247 @@ module.exports = {
             },
           },
         },
+        500: errRef('Server error'),
+      },
+    },
+    post: {
+      tags: ['CMS — Users'],
+      summary: 'Create a user',
+      security: [],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/CmsUserCreateBody' },
+          },
+        },
+      },
+      responses: {
+        201: {
+          description: 'Created user document',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { data: { type: 'object', additionalProperties: true } },
+              },
+            },
+          },
+        },
+        409: errRef('Email already registered'),
+        422: errRef('Validation error'),
+        500: errRef('Server error'),
+      },
+    },
+  },
+
+  '/api/v1/cms/users/{id}': {
+    patch: {
+      tags: ['CMS — Users'],
+      summary: 'Update a user',
+      security: [],
+      parameters: [
+        { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'MongoDB ObjectId' },
+      ],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/CmsUserPatchBody' },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Updated user',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { data: { type: 'object', additionalProperties: true } },
+              },
+            },
+          },
+        },
+        404: errRef('User not found'),
+        422: errRef('Validation error'),
+        500: errRef('Server error'),
+      },
+    },
+    delete: {
+      tags: ['CMS — Users'],
+      summary: 'Delete a user',
+      security: [],
+      parameters: [
+        { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+      ],
+      responses: {
+        204: { description: 'Deleted' },
+        404: errRef('User not found'),
+        500: errRef('Server error'),
+      },
+    },
+  },
+
+  '/api/v1/cms/recipes': {
+    get: {
+      tags: ['CMS — Recipes'],
+      summary: 'List all recipes (admin)',
+      description: 'Returns all recipes regardless of `isPublished` flag. Supports pagination.',
+      security: [],
+      parameters: [
+        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+      ],
+      responses: {
+        200: {
+          description: 'Paginated recipes',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  data: {
+                    type: 'object',
+                    properties: {
+                      recipes: { type: 'array', items: { $ref: '#/components/schemas/Recipe' } },
+                      pagination: { $ref: '#/components/schemas/Pagination' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        500: errRef('Server error'),
+      },
+    },
+    post: {
+      tags: ['CMS — Recipes'],
+      summary: 'Create a recipe',
+      description: 'Multipart form upload. The `image` field is optional.',
+      security: [],
+      requestBody: {
+        content: {
+          'multipart/form-data': {
+            schema: {
+              type: 'object',
+              properties: {
+                image: { type: 'string', format: 'binary' },
+                title: { type: 'string' },
+                description: { type: 'string' },
+                isPublished: { type: 'boolean' },
+                isTrending: { type: 'boolean' },
+                dietaryTags: { type: 'string', description: 'JSON-encoded array of strings' },
+                allergens: { type: 'string', description: 'JSON-encoded array of strings' },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        201: {
+          description: 'Created recipe',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { data: { $ref: '#/components/schemas/Recipe' } },
+              },
+            },
+          },
+        },
+        422: errRef('Validation error'),
+        500: errRef('Server error'),
+      },
+    },
+  },
+
+  '/api/v1/cms/recipes/{id}': {
+    patch: {
+      tags: ['CMS — Recipes'],
+      summary: 'Update a recipe',
+      description: 'Multipart form upload. Omit `image` to keep the existing one.',
+      security: [],
+      parameters: [
+        { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+      ],
+      requestBody: {
+        content: {
+          'multipart/form-data': {
+            schema: {
+              type: 'object',
+              properties: {
+                image: { type: 'string', format: 'binary' },
+                title: { type: 'string' },
+                description: { type: 'string' },
+                isPublished: { type: 'boolean' },
+                isTrending: { type: 'boolean' },
+                dietaryTags: { type: 'string', description: 'JSON-encoded array of strings' },
+                allergens: { type: 'string', description: 'JSON-encoded array of strings' },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Updated recipe',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { data: { $ref: '#/components/schemas/Recipe' } },
+              },
+            },
+          },
+        },
+        404: errRef('Recipe not found'),
+        422: errRef('Validation error'),
+        500: errRef('Server error'),
+      },
+    },
+    delete: {
+      tags: ['CMS — Recipes'],
+      summary: 'Delete a recipe',
+      security: [],
+      parameters: [
+        { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+      ],
+      responses: {
+        204: { description: 'Deleted' },
+        404: errRef('Recipe not found'),
+        500: errRef('Server error'),
+      },
+    },
+  },
+
+  '/api/v1/cms/notifications/send': {
+    post: {
+      tags: ['CMS — Notifications'],
+      summary: 'Send push notification',
+      description: 'Sends a Firebase Cloud Messaging push notification. Omit `userIds` to broadcast to all users with registered FCM tokens.',
+      security: [],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/NotificationSendBody' },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Notification dispatched',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { message: { type: 'string', example: 'Notification sent' } },
+              },
+            },
+          },
+        },
+        422: errRef('Validation error'),
         500: errRef('Server error'),
       },
     },

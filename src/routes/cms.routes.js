@@ -39,6 +39,7 @@ router.delete('/survey-questions/:id', cmsController.deleteSurveyQuestion);
 
 // ── Translations CRUD ──────────────────────────────────────────────────────────
 router.get('/translations', translationController.listTranslations);
+router.post('/translations/bulk', translationController.bulkUpsertTranslations);
 router.get('/translations/:key', translationController.getTranslation);
 router.put('/translations/:key', validate(translationSchema), translationController.upsertTranslation);
 router.delete('/translations/:key', translationController.deleteTranslation);
@@ -54,5 +55,8 @@ router.get('/recipes', cmsController.listRecipes);
 router.post('/recipes', upload.single('image'), cmsController.createRecipe);
 router.patch('/recipes/:id', upload.single('image'), cmsController.updateRecipe);
 router.delete('/recipes/:id', cmsController.deleteRecipe);
+
+// ── Notifications ──────────────────────────────────────────────────────────────
+router.post('/notifications/send', cmsController.sendNotification);
 
 module.exports = router;

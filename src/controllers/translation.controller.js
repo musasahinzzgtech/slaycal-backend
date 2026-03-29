@@ -44,4 +44,24 @@ async function getLocaleTranslations(req, res, next) {
   }
 }
 
-module.exports = { listTranslations, getTranslation, upsertTranslation, deleteTranslation, getLocaleTranslations };
+// Bulk upsert from two nested locale JSONs: { en: {...}, tr: {...} }
+async function bulkUpsertTranslations(req, res, next) {
+  try {
+    const { en: enJson, tr: trJson } = req.body;
+    const { flatten } = translationService;
+    const flatEn = enJson ? flatten(enJson) : {};
+    const flatTr = trJson ? flatten(trJson) : {};
+    const allKeys = new Set([...Object.keys(flatEn), ...Object.keys(flatTr)]);
+    const entries = [...allKeys].map((key) => ({
+      key,
+      en: flatEn[key] ?? '',
+      tr: flatTr[key] ?? '',
+    }));
+    const result = await translationService.bulkUpsertTranslations(entries);
+    res.json({ data: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listTranslations, getTranslation, upsertTranslation, deleteTranslation, getLocaleTranslations, bulkUpsertTranslations };

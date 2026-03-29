@@ -18,5 +18,6 @@ const updateSchema = z.object({
 
 router.get('/personal-details', auth, controller.getPersonalDetails);
 router.patch('/personal-details', auth, validate(updateSchema), controller.updatePersonalDetails);
+router.post('/fcm-token', auth, controller.registerFcmToken);
 
 module.exports = router;

@@ -1,6 +1,7 @@
 const cmsService = require('../services/cms.service');
 const Recipe = require('../models/Recipe');
 const { uploadBuffer } = require('../services/storage.service');
+const notificationService = require('../services/notification.service');
 
 async function listSurveyQuestions(req, res, next) {
   try {
@@ -134,6 +135,16 @@ async function deleteRecipe(req, res, next) {
   }
 }
 
+async function sendNotification(req, res, next) {
+  try {
+    const { userId, title, body, data } = req.body;
+    await notificationService.sendToUser(userId, { title, body, data });
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listSurveyQuestions,
   createSurveyQuestion,
@@ -147,4 +158,5 @@ module.exports = {
   createRecipe,
   updateRecipe,
   deleteRecipe,
+  sendNotification,
 };

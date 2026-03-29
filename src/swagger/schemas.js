@@ -331,4 +331,87 @@ module.exports = {
     description:
       'All optional. For `type` `single`/`multiple`, `options` must be non-empty when present.',
   },
+
+  TranslationDoc: {
+    type: 'object',
+    properties: {
+      _id: { type: 'string' },
+      key: { type: 'string', example: 'home.title' },
+      en: { type: 'string', example: 'Home' },
+      tr: { type: 'string', example: 'Ana Sayfa' },
+      createdAt: { type: 'string', format: 'date-time' },
+      updatedAt: { type: 'string', format: 'date-time' },
+    },
+  },
+
+  TranslationUpsertBody: {
+    type: 'object',
+    properties: {
+      en: { type: 'string', example: 'Home' },
+      tr: { type: 'string', example: 'Ana Sayfa' },
+    },
+  },
+
+  TranslationBulkBody: {
+    type: 'object',
+    description: 'Pass one or both locale JSONs. Nested objects are flattened to dot-notation keys automatically. Existing keys are overwritten.',
+    properties: {
+      en: { type: 'object', additionalProperties: true, description: 'Full or partial English locale JSON' },
+      tr: { type: 'object', additionalProperties: true, description: 'Full or partial Turkish locale JSON' },
+    },
+  },
+
+  FcmTokenBody: {
+    type: 'object',
+    required: ['token'],
+    properties: {
+      token: { type: 'string', description: 'Firebase Cloud Messaging device token' },
+    },
+  },
+
+  AdminRegisterBody: {
+    type: 'object',
+    required: ['email', 'password'],
+    properties: {
+      email: { type: 'string', format: 'email' },
+      password: { type: 'string', minLength: 8 },
+      firstName: { type: 'string' },
+      lastName: { type: 'string' },
+    },
+  },
+
+  CmsUserCreateBody: {
+    type: 'object',
+    required: ['email', 'password'],
+    properties: {
+      email: { type: 'string', format: 'email' },
+      password: { type: 'string', minLength: 8 },
+      firstName: { type: 'string' },
+      lastName: { type: 'string' },
+      userType: { type: 'string', enum: ['anonymous', 'registered'], default: 'registered' },
+      roles: { type: 'array', items: { type: 'string' }, example: ['admin'] },
+    },
+  },
+
+  CmsUserPatchBody: {
+    type: 'object',
+    properties: {
+      email: { type: 'string', format: 'email' },
+      firstName: { type: 'string' },
+      lastName: { type: 'string' },
+      userType: { type: 'string', enum: ['anonymous', 'registered'] },
+      roles: { type: 'array', items: { type: 'string' } },
+    },
+  },
+
+  NotificationSendBody: {
+    type: 'object',
+    required: ['title', 'body'],
+    properties: {
+      title: { type: 'string', example: 'New Recipe Available' },
+      body: { type: 'string', example: 'Check out your personalized recipe for today!' },
+      data: { type: 'object', additionalProperties: true, description: 'Optional custom data payload' },
+      userIds: { type: 'array', items: { type: 'string' }, description: 'Target specific user IDs; omit to broadcast to all' },
+    },
+  },
 };

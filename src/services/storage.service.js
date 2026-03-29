@@ -1,21 +1,11 @@
-const admin = require('firebase-admin');
-const config = require('../config');
+const { admin, getApp } = require('./firebase');
 
 let bucket;
 
 function getBucket() {
   if (!bucket) {
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: config.firebase.projectId,
-          privateKey: config.firebase.privateKey,
-          clientEmail: config.firebase.clientEmail,
-        }),
-        storageBucket: config.firebase.storageBucket,
-      });
-    }
-    bucket = admin.storage().bucket();
+    const app = getApp();
+    bucket = admin.storage(app).bucket();
   }
   return bucket;
 }

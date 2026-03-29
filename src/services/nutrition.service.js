@@ -9,8 +9,8 @@ const ApiError = require('../utils/ApiError');
 
 async function getFoodLog({ userId, startDate, endDate }) {
   const today = new Date().toISOString().slice(0, 10);
-  const start = new Date(`${startDate || today}T00:00:00.000Z`);
-  const end = new Date(`${endDate || today}T23:59:59.999Z`);
+  const start = new Date(startDate || `${today}T00:00:00.000Z`);
+  const end = new Date(endDate || `${today}T23:59:59.999Z`);
 
   const [rawEntries, activePlan, prefs] = await Promise.all([
     FoodLogEntry.find({ user: userId, loggedAt: { $gte: start, $lte: end } })
@@ -117,8 +117,8 @@ async function deleteFoodLog({ userId, id }) {
 
 async function getWaterIntake({ userId, startDate, endDate }) {
   const today = new Date().toISOString().slice(0, 10);
-  const start = new Date(`${startDate || today}T00:00:00.000Z`);
-  const end = new Date(`${endDate || today}T23:59:59.999Z`);
+  const start = new Date(startDate || `${today}T00:00:00.000Z`);
+  const end = new Date(endDate || `${today}T23:59:59.999Z`);
 
   const [rawEntries, prefs, activePlan] = await Promise.all([
     WaterIntake.find({ user: userId, loggedAt: { $gte: start, $lte: end } })
@@ -165,8 +165,8 @@ async function deleteWaterIntake({ userId, id }) {
 
 async function getProgress({ userId, startDate, endDate }) {
   const today = new Date().toISOString().slice(0, 10);
-  const start = new Date(`${startDate || today}T00:00:00.000Z`);
-  const end = new Date(`${endDate || today}T23:59:59.999Z`);
+  const start = new Date(startDate || `${today}T00:00:00.000Z`);
+  const end = new Date(endDate || `${today}T23:59:59.999Z`);
 
   const [foodEntries, waterEntries, weightLogs, activePlan, prefs] = await Promise.all([
     FoodLogEntry.find({ user: userId, loggedAt: { $gte: start, $lte: end } }).lean(),
