@@ -62,6 +62,7 @@ async function discoverRecipes({
   maxPrepTime,
   dietaryPreferences,
   language = "en",
+  userId,
 }) {
   const aiRecipes = await openaiService.generateRecipes(
     ingredients,
@@ -71,10 +72,34 @@ async function discoverRecipes({
   );
 
   const saved = await Recipe.insertMany(
-    aiRecipes.map((r) => ({ ...r, source: "ai_generated", isPublished: true })),
+    aiRecipes.map((r) => ({
+      ...r,
+      source: "ai_generated",
+      isPublished: true,
+      ...(userId ? { createdBy: userId } : {}),
+    })),
   );
 
   return saved;
+}
+
+async function getRecipesAI({ userId, page = 1, perPage = 20 }) {
+  const skip = (page - 1) * perPage;
+  const filter = { source: "ai_generated", createdBy: userId };
+
+  const [raw, total] = await Promise.all([
+    Recipe.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(perPage)
+      .lean(),
+    Recipe.countDocuments(filter),
+  ]);
+
+  return {
+    recipes: raw,
+    pagination: buildPagination(page, perPage, total),
+  };
 }
 
 async function getPersonalizedRecipes({
@@ -108,4 +133,9 @@ async function getPersonalizedRecipes({
   };
 }
 
-module.exports = { getRecipes, discoverRecipes, getPersonalizedRecipes };
+module.exports = {
+  getRecipes,
+  discoverRecipes,
+  getPersonalizedRecipes,
+  getRecipesAI,
+};

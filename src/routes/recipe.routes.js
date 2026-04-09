@@ -12,6 +12,7 @@ const discoverSchema = z.object({
   dietaryPreferences: z.array(z.string()).optional(),
 });
 
+router.get('/ai', auth, controller.getRecipesAI);
 router.get('/', controller.getRecipes);
 router.post('/discover', auth, validate(discoverSchema), controller.discoverRecipes);
 router.get('/personalized', auth, controller.getPersonalizedRecipes);

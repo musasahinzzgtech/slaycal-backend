@@ -1,4 +1,4 @@
-const recipeService = require('../services/recipe.service');
+const recipeService = require("../services/recipe.service");
 
 function parsePagination(query) {
   return {
@@ -10,7 +10,11 @@ function parsePagination(query) {
 async function getRecipes(req, res, next) {
   try {
     const { page, perPage } = parsePagination(req.query);
-    const { recipes, pagination } = await recipeService.getRecipes({ page, perPage, ...req.query });
+    const { recipes, pagination } = await recipeService.getRecipes({
+      page,
+      perPage,
+      ...req.query,
+    });
     return res.json({ data: recipes, meta: pagination });
   } catch (err) {
     return next(err);
@@ -19,9 +23,28 @@ async function getRecipes(req, res, next) {
 
 async function discoverRecipes(req, res, next) {
   try {
-    const language = req.get('Accept-Language')?.split(',')[0]?.split('-')[0]?.trim() || 'en';
-    const recipes = await recipeService.discoverRecipes({ ...req.body, language });
+    const language =
+      req.get("Accept-Language")?.split(",")[0]?.split("-")[0]?.trim() || "en";
+    const recipes = await recipeService.discoverRecipes({
+      ...req.body,
+      language,
+      userId: req.user.id,
+    });
     return res.json({ data: { recipes } });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function getRecipesAI(req, res, next) {
+  try {
+    const { page, perPage } = parsePagination(req.query);
+    const { recipes, pagination } = await recipeService.getRecipesAI({
+      userId: req.user.id,
+      page,
+      perPage,
+    });
+    return res.json({ data: recipes, meta: pagination });
   } catch (err) {
     return next(err);
   }
@@ -42,4 +65,9 @@ async function getPersonalizedRecipes(req, res, next) {
   }
 }
 
-module.exports = { getRecipes, discoverRecipes, getPersonalizedRecipes };
+module.exports = {
+  getRecipes,
+  discoverRecipes,
+  getPersonalizedRecipes,
+  getRecipesAI,
+};

@@ -469,11 +469,48 @@ module.exports = {
     },
   },
 
+  '/api/v1/recipes/ai': {
+    get: {
+      tags: ['Recipes'],
+      summary: 'List AI-generated recipes for the current user',
+      description:
+        'Authenticated only. Returns full recipe documents (`source: ai_generated`) created by the current user (via discover). Same pagination as other recipe list endpoints (`page`, `perPage`).',
+      security: bearer,
+      parameters: [
+        { name: 'page', in: 'query', schema: { type: 'integer', default: 1, minimum: 1 } },
+        { name: 'perPage', in: 'query', schema: { type: 'integer', default: 20, maximum: 100 } },
+      ],
+      responses: {
+        200: {
+          description: 'Paginated full recipe documents',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  data: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/Recipe' },
+                    description: 'Full MongoDB recipe fields (lean)',
+                  },
+                  meta: { $ref: '#/components/schemas/Pagination' },
+                },
+              },
+            },
+          },
+        },
+        401: errRef('Unauthorized'),
+        500: errRef('Server error'),
+      },
+    },
+  },
+
   '/api/v1/recipes/discover': {
     post: {
       tags: ['Recipes'],
       summary: 'AI recipe discovery from ingredients',
-      description: 'Generates recipes via OpenAI, persists them, and returns the saved documents.',
+      description:
+        'Generates recipes via OpenAI, persists them with `source: ai_generated` and `createdBy` set to the authenticated user, and returns the saved documents.',
       security: bearer,
       requestBody: {
         required: true,

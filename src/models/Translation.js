@@ -1,12 +1,12 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const translationSchema = new mongoose.Schema(
   {
     key: { type: String, required: true, unique: true },
-    en: { type: String, default: '' },
-    tr: { type: String, default: '' },
+    en: { type: String, default: "" },
+    tr: { type: String, default: "" },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-module.exports = mongoose.model('Translation', translationSchema);
+module.exports = mongoose.model("Translation", translationSchema);
