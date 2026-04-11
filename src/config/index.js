@@ -21,4 +21,7 @@ module.exports = {
   cors: {
     origins: (process.env.CORS_ORIGINS || 'http://localhost:8081').split(','),
   },
+  redis: {
+    url: process.env.REDIS_URL || 'redis://localhost:6379',
+  },
 };

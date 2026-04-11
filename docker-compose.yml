@@ -1,0 +1,71 @@
+version: '3.9'
+
+# ─── SlayCall backend + dependencies ─────────────────────────────────────────
+# Usage:
+#   cp .env.example .env        # fill in real secrets
+#   docker compose up --build
+
+services:
+
+  # ── Express / Bun API ──────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file: .env
+    environment:
+      # Override the connection strings so they point to the sibling containers.
+      # All other secrets (JWT, Firebase, OpenAI) come from .env.
+      MONGODB_URI: mongodb://mongo:27017/slaycall
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── MongoDB ────────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7-jammy
+    volumes:
+      - mongo_data:/data/db
+    # Not exposed on the host by default — only reachable inside the compose network.
+    # Uncomment the next two lines to access via MongoDB Compass during dev:
+    # ports:
+    #   - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  # ── Redis ──────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    # Uncomment to access redis-cli from the host during dev:
+    # ports:
+    #   - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+  redis_data:

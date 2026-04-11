@@ -1,5 +1,7 @@
 const adminService = require('../services/admin.service');
 
+// ─── Quota ────────────────────────────────────────────────────────────────────
+
 async function getQuotaConfigs(req, res, next) {
   try {
     const configs = await adminService.getQuotaConfigs();
@@ -9,14 +11,37 @@ async function getQuotaConfigs(req, res, next) {
   }
 }
 
-async function updateQuotaConfig(req, res, next) {
+async function upsertQuotaConfig(req, res, next) {
   try {
-    const quotaConfig = await adminService.updateQuotaConfig({ id: req.params.id, data: req.body });
-    return res.json({ data: { quotaConfig } });
+    const { feature, tier } = req.params;
+    const { dailyLimit, isActive } = req.body;
+    const config = await adminService.upsertQuotaConfig({ feature, tier, dailyLimit, isActive });
+    return res.json({ data: { config } });
   } catch (err) {
     return next(err);
   }
 }
+
+async function deleteQuotaConfig(req, res, next) {
+  try {
+    const { feature, tier } = req.params;
+    await adminService.deleteQuotaConfig({ feature, tier });
+    return res.status(204).send();
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function getUserQuotaUsage(req, res, next) {
+  try {
+    const usage = await adminService.getUserQuotaUsage(req.params.userId);
+    return res.json({ data: { usage } });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+// ─── Subscriptions ────────────────────────────────────────────────────────────
 
 async function getSubscriptions(req, res, next) {
   try {
@@ -53,4 +78,12 @@ async function grantTrial(req, res, next) {
   }
 }
 
-module.exports = { getQuotaConfigs, updateQuotaConfig, getSubscriptions, updateSubscriptionTier, grantTrial };
+module.exports = {
+  getQuotaConfigs,
+  upsertQuotaConfig,
+  deleteQuotaConfig,
+  getUserQuotaUsage,
+  getSubscriptions,
+  updateSubscriptionTier,
+  grantTrial,
+};

@@ -1,0 +1,27 @@
+# Version control
+.git
+.gitignore
+
+# Environment files — never bake secrets into the image
+.env
+.env.*
+!.env.example
+
+# Dev dependencies & local tooling
+node_modules
+bun.lock
+
+# Editor & OS artefacts
+.DS_Store
+.vscode
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Docker files themselves
+Dockerfile
+docker-compose.yml
+docker-compose.*.yml
