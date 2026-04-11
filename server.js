@@ -5,7 +5,11 @@ const mongoose = require("mongoose");
 const app = require("./src/app");
 const config = require("./src/config");
 const setupScanSocket = require("./src/socket/scan.socket");
+const setupRecognitionSocket = require("./src/socket/recognition.socket");
+const setupRecipesSocket = require("./src/socket/recipes.socket");
 const scanService = require("./src/services/scan.service");
+const recognitionService = require("./src/services/recognition.service");
+const recipeService = require("./src/services/recipe.service");
 
 const server = http.createServer(app);
 
@@ -18,7 +22,11 @@ const io = new Server(server, {
 });
 
 setupScanSocket(io);
-scanService.setIo(io); // inject io so scan service can emit events
+setupRecognitionSocket(io);
+setupRecipesSocket(io);
+scanService.setIo(io);
+recognitionService.setIo(io);
+recipeService.setIo(io);
 
 // ─── DATABASE ─────────────────────────────────────────────────────────────────
 async function start() {

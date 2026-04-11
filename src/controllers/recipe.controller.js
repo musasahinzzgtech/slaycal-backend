@@ -25,12 +25,12 @@ async function discoverRecipes(req, res, next) {
   try {
     const language =
       req.get("Accept-Language")?.split(",")[0]?.split("-")[0]?.trim() || "en";
-    const recipes = await recipeService.discoverRecipes({
+    const { requestId } = await recipeService.startDiscoverRecipes({
       ...req.body,
       language,
       userId: req.user.id,
     });
-    return res.json({ data: { recipes } });
+    return res.status(202).json({ data: { requestId } });
   } catch (err) {
     return next(err);
   }

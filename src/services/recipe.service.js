@@ -1,6 +1,13 @@
 const Recipe = require("../models/Recipe");
 const UserPreference = require("../models/UserPreference");
 const openaiService = require("./openai.service");
+const { randomUUID } = require("crypto");
+
+let _io = null;
+function setIo(io) { _io = io; }
+function emitToRecipes(requestId, event, data) {
+  if (_io) _io.of('/recipes').to(`recipes:${requestId}`).emit(event, data);
+}
 
 function buildPagination(page, perPage, total) {
   const lastPage = Math.max(1, Math.ceil(total / perPage));
@@ -57,13 +64,7 @@ async function getRecipes({
   };
 }
 
-async function discoverRecipes({
-  ingredients,
-  maxPrepTime,
-  dietaryPreferences,
-  language = "en",
-  userId,
-}) {
+async function _generateAndSave({ ingredients, maxPrepTime, dietaryPreferences, language, userId }) {
   const aiRecipes = await openaiService.generateRecipes(
     ingredients,
     maxPrepTime,
@@ -71,7 +72,7 @@ async function discoverRecipes({
     language,
   );
 
-  const saved = await Recipe.insertMany(
+  return Recipe.insertMany(
     aiRecipes.map((r) => ({
       ...r,
       source: "ai_generated",
@@ -79,8 +80,21 @@ async function discoverRecipes({
       ...(userId ? { createdBy: userId } : {}),
     })),
   );
+}
 
-  return saved;
+async function startDiscoverRecipes({ ingredients, maxPrepTime, dietaryPreferences, language = "en", userId }) {
+  const requestId = randomUUID();
+
+  (async () => {
+    try {
+      const recipes = await _generateAndSave({ ingredients, maxPrepTime, dietaryPreferences, language, userId });
+      emitToRecipes(requestId, 'recipes:completed', { requestId, recipes });
+    } catch (err) {
+      emitToRecipes(requestId, 'recipes:error', { requestId, message: err.message });
+    }
+  })().catch(console.error);
+
+  return { requestId };
 }
 
 async function getRecipesAI({ userId, page = 1, perPage = 20 }) {
@@ -128,14 +142,15 @@ async function getPersonalizedRecipes({
   ]);
 
   return {
-    recipes: raw.map(mapRecipe),
+    recipes: raw,
     pagination: buildPagination(page, perPage, total),
   };
 }
 
 module.exports = {
   getRecipes,
-  discoverRecipes,
+  startDiscoverRecipes,
   getPersonalizedRecipes,
   getRecipesAI,
+  setIo,
 };

@@ -4,6 +4,12 @@ const quotaService = require('./quota.service');
 const openaiService = require('./openai.service');
 const ApiError = require('../utils/ApiError');
 
+let _io = null;
+function setIo(io) { _io = io; }
+function emitToRecognition(jobId, event, data) {
+  if (_io) _io.of('/recognition').to(`recognition:${jobId}`).emit(event, data);
+}
+
 async function uploadImage({ userId, file, language = 'en' }) {
   await quotaService.check(userId, 'ai_scan');
 
@@ -50,16 +56,25 @@ async function processImage(jobId) {
     job.status = 'processing';
     await job.save();
 
+    emitToRecognition(jobId, 'recognition:progress', { jobId, progress: 30, message: 'Analyzing image...' });
+
     const ingredients = await openaiService.recognizeIngredients(job.imageUrl, job.language || 'en');
     job.detectionResults = ingredients;
     job.status = 'completed';
     job.completedAt = new Date();
     await job.save();
+
+    emitToRecognition(jobId, 'recognition:completed', {
+      jobId,
+      detectionResults: job.detectionResults,
+    });
   } catch (err) {
     job.status = 'failed';
     job.errorMessage = err.message;
     await job.save();
+
+    emitToRecognition(jobId, 'recognition:error', { jobId, message: err.message });
   }
 }
 
-module.exports = { uploadImage, getJob, processImage };
+module.exports = { uploadImage, getJob, processImage, setIo };
