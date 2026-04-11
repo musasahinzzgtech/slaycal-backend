@@ -16,8 +16,6 @@ const userPreferenceSchema = new mongoose.Schema(
     gender: { type: String, enum: ['male', 'female', 'other', null], default: null },
     age: { type: Number },
     heightCm: { type: Number },
-    weightKg: { type: Number },
-    goalWeightKg: { type: Number },
     activityLevel: {
       type: String,
       enum: ['sedentary', 'light', 'moderate', 'active', 'very_active', null],
@@ -48,13 +46,6 @@ const userPreferenceSchema = new mongoose.Schema(
     // Lifestyle
     mealsPerDay: { type: Number },
     cookTimePreference: { type: String },
-
-    // Calculated targets
-    dailyCalorieTarget: { type: Number },
-    dailyProteinTarget: { type: Number },
-    dailyCarbsTarget: { type: Number },
-    dailyFatTarget: { type: Number },
-    dailyWaterGoalMl: { type: Number },
 
     // Survey raw responses
     surveyResponses: [surveyResponseSchema],

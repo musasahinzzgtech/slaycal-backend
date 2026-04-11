@@ -1,6 +1,7 @@
 const SurveyQuestion = require('../models/SurveyQuestion');
 const UserPreference = require('../models/UserPreference');
 const { calculateTargets } = require('../utils/calorie');
+const { createGoalPlan, createWeightLog } = require('./nutrition.service');
 
 const DIET_KEYS = ['diet', 'dietary_preferences'];
 const ALLERGEN_KEYS = ['allergens'];
@@ -102,27 +103,46 @@ async function submitSurvey(userId, responses) {
     gender: merged.gender,
     age: merged.age,
     heightCm: merged.heightCm,
-    weightKg: merged.weightKg,
+    weightKg: extracted.weightKg,
     activityLevel: merged.activityLevel,
     goalType: merged.goalType,
     goalTimeline: merged.goalTimeline,
   });
 
+  // Strip fields that now live in dedicated tables
+  const { weightKg, goalWeightKg, ...prefFields } = extracted;
+
   const update = {
-    ...extracted,
+    ...prefFields,
     surveyResponses: responses,
     surveyCompletedAt: new Date(),
   };
 
-  if (targets) {
-    update.dailyCalorieTarget = targets.calories;
-    update.dailyProteinTarget = targets.proteinG;
-    update.dailyCarbsTarget = targets.carbsG;
-    update.dailyFatTarget = targets.fatG;
-    update.dailyWaterGoalMl = targets.waterMl;
+  const preference = await UserPreference.findOneAndUpdate(
+    { user: userId },
+    { $set: update },
+    { upsert: true, new: true }
+  ).lean();
+
+  if (weightKg != null) {
+    await createWeightLog({ userId, data: { weightKg } });
   }
 
-  return UserPreference.findOneAndUpdate({ user: userId }, { $set: update }, { upsert: true, new: true }).lean();
+  if (targets) {
+    await createGoalPlan({
+      userId,
+      data: {
+        targetCalories: targets.calories,
+        targetProteinG: targets.proteinG,
+        targetCarbsG: targets.carbsG,
+        targetFatG: targets.fatG,
+        targetWaterMl: targets.waterMl,
+        targetWeightKg: goalWeightKg ?? null,
+      },
+    });
+  }
+
+  return preference;
 }
 
 async function getPreferences(userId) {
