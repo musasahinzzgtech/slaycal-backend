@@ -1,4 +1,5 @@
 const ScanResult = require('../models/ScanResult');
+const FoodLogEntry = require('../models/FoodLogEntry');
 const storageService = require('./storage.service');
 const quotaService = require('./quota.service');
 const openaiService = require('./openai.service');
@@ -51,10 +52,22 @@ async function processScan(scanId) {
     scan.completedAt = new Date();
     await scan.save();
 
+    const foodLog = await FoodLogEntry.create({
+      user: scan.user,
+      mealName: scan.foodName || 'Scanned Meal',
+      calories: scan.nutrition?.calories ?? 0,
+      proteinGrams: scan.nutrition?.protein ?? 0,
+      carbsGrams: scan.nutrition?.carbs ?? 0,
+      fatGrams: scan.nutrition?.fat ?? 0,
+      quantity: 1,
+      imageUrl: scan.imageUrl,
+    });
+
     emitToScan(scanId, 'scan:completed', {
       scanId,
       nutrition: scan.nutrition,
       foodName: scan.foodName,
+      foodLogId: foodLog._id,
     });
   } catch (err) {
     scan.status = 'failed';

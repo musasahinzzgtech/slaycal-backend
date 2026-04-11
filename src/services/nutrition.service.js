@@ -43,6 +43,7 @@ async function getFoodLog({ userId, startDate, endDate }) {
       carbsGrams: entry.carbsGrams || 0,
       fatGrams: entry.fatGrams || 0,
       quantity: entry.quantity || 1,
+      imageUrl: entry.imageUrl,
       mealType: entry.mealType,
       loggedAt: entry.loggedAt.toISOString(),
       createdAt: entry.createdAt?.toISOString(),
